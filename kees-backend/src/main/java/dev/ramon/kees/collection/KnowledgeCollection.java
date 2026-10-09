@@ -6,6 +6,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 import java.time.Instant;
+import java.util.UUID;
 
 @Entity
 @Table(name = "knowledge_collections")
@@ -16,6 +17,9 @@ public class KnowledgeCollection {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+
+    @Column(name = "public_id", nullable = false, updatable = false)
+    private UUID publicId;
 
     @Column(nullable = false, length = 100)
     private String name;
@@ -30,6 +34,7 @@ public class KnowledgeCollection {
     private Instant updatedAt;
 
     public KnowledgeCollection(String name, String description) {
+        this.publicId = UUID.randomUUID();
         this.name = requireName(name);
         this.description = normalizeDescription(description);
     }
