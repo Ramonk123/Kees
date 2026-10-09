@@ -1,4 +1,4 @@
-package dev.ramon.keesbackend;
+package dev.ramon.kees;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
