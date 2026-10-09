@@ -18,5 +18,40 @@ services:
       retries: 10
       start_period: 5s
 
+  silo:
+    image: docker.io/pgsty/silo:RELEASE.2026-09-16T00-00-00Z
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${KEES_STORAGE_ACCESS_KEY:-kees}
+      MINIO_ROOT_PASSWORD: ${KEES_STORAGE_SECRET_KEY:-kees-secret-key}
+    ports:
+      - "127.0.0.1:9000:9000"
+      - "127.0.0.1:9001:9001"
+    volumes:
+      - silo-data:/data
+    healthcheck:
+      test: ["CMD", "silo", "healthcheck", "ready"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 5s
+
+  silo-init:
+    image: docker.io/pgsty/silo:RELEASE.2026-09-16T00-00-00Z
+    depends_on:
+      silo:
+        condition: service_healthy
+    environment:
+      MINIO_ROOT_USER: ${KEES_STORAGE_ACCESS_KEY:-kees}
+      MINIO_ROOT_PASSWORD: ${KEES_STORAGE_SECRET_KEY:-kees-secret-key}
+      KEES_STORAGE_BUCKET: ${KEES_STORAGE_BUCKET:-kees-sources}
+    entrypoint:
+      - /bin/sh
+      - -c
+      - |
+        mcli alias set local http://silo:9000 "$${MINIO_ROOT_USER}" "$${MINIO_ROOT_PASSWORD}"
+        mcli mb --ignore-existing "local/$${KEES_STORAGE_BUCKET}"
+
 volumes:
   postgres-data:
+  silo-data:
