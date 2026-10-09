@@ -5,6 +5,7 @@ import org.springframework.stereotype.Service;
 import software.amazon.awssdk.core.exception.SdkException;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
 import software.amazon.awssdk.services.s3.model.GetObjectRequest;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 
@@ -64,6 +65,15 @@ public class S3ObjectStorage implements ObjectStorage{
 
     @Override
     public void delete(String key) {
+        var request = DeleteObjectRequest.builder()
+                .bucket(properties.bucket())
+                .key(key)
+                .build();
 
+        try {
+            client.deleteObject(request);
+        } catch(SdkException exception) {
+            throw new DeleteObjectFailedException(key, exception);
+        }
     }
 }
