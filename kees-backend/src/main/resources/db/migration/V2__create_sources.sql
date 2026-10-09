@@ -19,7 +19,7 @@ CREATE TABLE sources (
         REFERENCES knowledge_collections (id)
         ON DELETE RESTRICT,
     CONSTRAINT ck_sources_content_type
-        CHECK (content_type IN ('TEXT')),
+        CHECK (content_type IN ('MARKDOWN')),
     CONSTRAINT ck_sources_size_bytes
         CHECK (size_bytes > 0),
     CONSTRAINT ck_sources_sha256
