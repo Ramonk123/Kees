@@ -2,10 +2,8 @@ package dev.ramon.kees.source;
 
 import dev.ramon.kees.storage.ObjectStorage;
 import dev.ramon.kees.storage.ObjectStorageException;
-import dev.ramon.kees.storage.StorageProperties;
 import lombok.RequiredArgsConstructor;
 import org.jspecify.annotations.Nullable;
-import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -36,9 +34,9 @@ public class SourceUploadService {
         var MAX_FILE_SIZE = properties.maxFileSizeInBytes();
 
         if (file.isEmpty()) {
-            throw new IllegalArgumentException("File cannot be empty");
+            throw new InvalidSourceFileException("File cannot be empty");
         } else if (file.getSize() > MAX_FILE_SIZE) {
-            throw new IllegalArgumentException("File size exceeds the maximum allowed size");
+            throw new InvalidSourceFileException("File size exceeds the maximum allowed size");
         }
 
         var fileName = normalizeFileName(file.getOriginalFilename());
