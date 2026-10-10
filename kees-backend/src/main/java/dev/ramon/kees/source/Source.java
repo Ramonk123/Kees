@@ -55,6 +55,7 @@ public class Source {
     private Instant updatedAt;
 
     public Source(
+            UUID publicId,
             KnowledgeCollection collection,
             String fileName,
             String objectKey,
@@ -62,7 +63,7 @@ public class Source {
             long size,
             String sha256
     ) {
-        this.publicId = UUID.randomUUID();
+        this.publicId = Objects.requireNonNull(publicId, "Public ID cannot be null");
         this.collection = Objects.requireNonNull(
                 collection,
                 "Collection cannot be null"
@@ -88,6 +89,24 @@ public class Source {
     @PreUpdate
     private void updateTimestamp() {
         updatedAt = Instant.now();
+    }
+
+    public void markStored() {
+        requireStatus(SourceStatus.PENDING_UPLOAD);
+        status = SourceStatus.STORED;
+    }
+
+    public void markFailed() {
+        requireStatus(SourceStatus.PENDING_UPLOAD);
+        status = SourceStatus.FAILED;
+    }
+
+    private void requireStatus(SourceStatus expected) {
+        if (status != expected) {
+            throw new IllegalStateException(
+                    "Expected source status: %s, but was: %s".formatted(expected, status)
+            );
+        }
     }
 
     private static String requireFileName(String fileName) {
