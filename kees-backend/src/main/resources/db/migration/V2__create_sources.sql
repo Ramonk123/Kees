@@ -25,7 +25,7 @@ CREATE TABLE sources (
     CONSTRAINT ck_sources_sha256
         CHECK (sha256 ~ '^[0-9a-f]{64}$'),
     CONSTRAINT ck_sources_status
-        CHECK (status IN ('PENDING_UPLOAD', 'STORED', 'READY', 'FAILED'))
+        CHECK (status IN ('PENDING_UPLOAD', 'STORED', 'READY', 'FAILED', 'PROCESSING'))
 );
 
 CREATE INDEX idx_sources_collection_id

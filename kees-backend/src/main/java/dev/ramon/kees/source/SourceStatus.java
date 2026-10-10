@@ -4,5 +4,6 @@ public enum SourceStatus {
     PENDING_UPLOAD,
     STORED,
     READY,
-    FAILED
+    FAILED,
+    PROCESSING
 }
