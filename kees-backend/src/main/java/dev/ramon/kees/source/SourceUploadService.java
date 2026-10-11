@@ -1,5 +1,6 @@
 package dev.ramon.kees.source;
 
+import dev.ramon.kees.shared.util.HashContent;
 import dev.ramon.kees.storage.ObjectStorage;
 import dev.ramon.kees.storage.ObjectStorageException;
 import lombok.RequiredArgsConstructor;
@@ -13,9 +14,6 @@ import java.nio.ByteBuffer;
 import java.nio.charset.CharacterCodingException;
 import java.nio.charset.CodingErrorAction;
 import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
-import java.util.HexFormat;
 import java.util.Locale;
 import java.util.UUID;
 
@@ -51,7 +49,7 @@ public class SourceUploadService {
 
         validateTextContent(content);
 
-        var sha256 = hashContent(content);
+        var sha256 = HashContent.hash(content);
 
         var sourcePublicId = UUID.randomUUID();
 
@@ -149,18 +147,6 @@ public class SourceUploadService {
 
         if (text.contains("\u0000")) {
             throw new InvalidSourceFileException("File content cannot contain null characters");
-        }
-    }
-
-    private static String hashContent(byte[] content) {
-        try {
-            var digest = MessageDigest.getInstance("SHA-256");
-            var hash = digest.digest(content);
-
-            return HexFormat.of().formatHex(hash);
-
-        } catch (NoSuchAlgorithmException exception) {
-            throw new IllegalStateException("SHA-256 algorithm is not available", exception);
         }
     }
 
