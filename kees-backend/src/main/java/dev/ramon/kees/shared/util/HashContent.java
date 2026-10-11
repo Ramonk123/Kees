@@ -5,7 +5,6 @@ import lombok.experimental.UtilityClass;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
-import java.util.Arrays;
 import java.util.HexFormat;
 import java.util.Objects;
 
@@ -18,7 +17,7 @@ public final class HashContent {
         Objects.requireNonNull(bytes, "Bytes cannot be null");
 
         try {
-            var digest = MessageDigest.getInstance("SHA-256");
+            var digest = MessageDigest.getInstance(HASH_ALGORITHM);
             return HexFormat.of().formatHex(digest.digest(bytes));
         } catch (NoSuchAlgorithmException exception) {
             throw new IllegalStateException(
