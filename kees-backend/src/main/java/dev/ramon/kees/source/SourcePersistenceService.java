@@ -58,15 +58,28 @@ public class SourcePersistenceService {
     }
 
     @Transactional
-    public Source markProcessing(Source source) {
+    public Source markProcessing(UUID publicId) {
+        var source = getByPublicId(publicId);
+
         source.markProcessing();
 
         return source;
     }
 
     @Transactional
-    public Source markReady(Source source) {
+    public Source markReady(UUID publicId) {
+        var source = getByPublicId(publicId);
+
         source.markReady();
+
+        return source;
+    }
+
+    @Transactional
+    public Source markProcessingFailed(UUID publicId) {
+        var source = getByPublicId(publicId);
+
+        source.markProcessingFailed();
 
         return source;
     }

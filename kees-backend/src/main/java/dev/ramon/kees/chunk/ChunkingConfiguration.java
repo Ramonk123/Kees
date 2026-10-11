@@ -9,5 +9,7 @@ import org.springframework.context.annotation.Configuration;
 public class ChunkingConfiguration {
 
     @Bean
-    MarkdownChunker markdownChunker(ChunkingProperties properties) {}
+    MarkdownChunker markdownChunker(ChunkingProperties properties) {
+        return new MarkdownChunker(properties.maxCharacters());
+    }
 }

@@ -8,35 +8,37 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
 public class SourceProcessingService {
 
-    private final SourceRepository sourceRepository;
     private final ChunkPersistenceService chunkPersistenceService;
     private final SourcePersistenceService sourcePersistenceService;
-    private final ObjectStorage s3ObjectStorage;
+    private final ObjectStorage objectStorage;
     private final MarkdownChunker chunker;
 
-    public void process(Long sourceId) {
-        var source = sourceRepository.findById(sourceId)
-                .orElseThrow();
+    public Source process(UUID sourcePublicId) {
+        var source = sourcePersistenceService.markProcessing(sourcePublicId);
 
-        sourcePersistenceService.markProcessing(source);
+        try (var object = objectStorage.retrieve(source.getObjectKey())) {
+            var bytes = object.content().readAllBytes();
+            var markdown = DecodeUtf8.decode(bytes);
+            var drafts = chunker.chunk(markdown);
 
-            try (var object = s3ObjectStorage.retrieve(source.getObjectKey())) {
-                var bytes = object.content().readAllBytes();
-                var decoded = DecodeUtf8.decode(bytes);
-                var chunkDrafts = chunker.chunk(decoded);
+            chunkPersistenceService.replaceForSource(source, drafts);
 
-                var chunks = chunkPersistenceService
-                        .replaceForSource(source, chunkDrafts);
-
-                var readiedSource = sourcePersistenceService.markReady(source);
-            } catch (IOException exception) {
-                sourcePersistenceService.markFailed(source.getPublicId());
-                throw new RuntimeException(exception);
+            return sourcePersistenceService.markReady(sourcePublicId);
+        } catch (IOException exception) {
+            sourcePersistenceService.markProcessingFailed(sourcePublicId);
+            throw new SourceFileReadException(
+                    "Could not read stored source file",
+                    exception
+            );
+        } catch (RuntimeException exception) {
+            sourcePersistenceService.markProcessingFailed(sourcePublicId);
+            throw exception;
         }
     }
 }

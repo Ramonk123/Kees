@@ -91,7 +91,7 @@ public class SourceUploadIntegrationTest {
                 .getResponseBody();
 
         assertThat(source).isNotNull();
-        assertThat(source.status()).isEqualTo(SourceStatus.STORED);
+        assertThat(source.status()).isEqualTo(SourceStatus.READY);
 
         var persistedSource = repository.findByPublicId(source.publicId())
                 .orElseThrow();

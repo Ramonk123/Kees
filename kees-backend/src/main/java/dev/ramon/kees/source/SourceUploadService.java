@@ -20,6 +20,7 @@ public class SourceUploadService {
 
     private final SourceUploadProperties properties;
     private final SourcePersistenceService sourcePersistenceService;
+    private final SourceProcessingService sourceProcessingService;
     private final ObjectStorage objectStorage;
 
     public Source upload(
@@ -35,7 +36,6 @@ public class SourceUploadService {
         }
 
         var fileName = normalizeFileName(file.getOriginalFilename());
-
         var content = readBytes(file);
 
         if (content.length == 0) {
@@ -69,11 +69,13 @@ public class SourceUploadService {
                     "text/markdown; charset=utf-8"
             );
 
-            return sourcePersistenceService.markStored(pendingSource.getPublicId());
         } catch (ObjectStorageException exception) {
             sourcePersistenceService.markFailed(pendingSource.getPublicId());
             throw exception;
         }
+
+        sourcePersistenceService.markStored(pendingSource.getPublicId());
+        return sourceProcessingService.process(pendingSource.getPublicId());
     }
 
     private String normalizeFileName(@Nullable String originalFilename) {

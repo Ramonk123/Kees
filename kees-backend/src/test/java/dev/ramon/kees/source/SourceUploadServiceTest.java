@@ -37,6 +37,9 @@ class SourceUploadServiceTest {
     private SourcePersistenceService sourcePersistenceService;
 
     @Mock
+    private SourceProcessingService sourceProcessingService;
+
+    @Mock
     private ObjectStorage objectStorage;
 
     @InjectMocks
@@ -57,7 +60,7 @@ class SourceUploadServiceTest {
         );
 
         var pendingSource = mock(Source.class);
-        var storedSource = mock(Source.class);
+        var readySource = mock(Source.class);
 
         when(properties.maxFileSizeInBytes()).thenReturn(5L * 1024 * 1024);
         when(pendingSource.getPublicId()).thenReturn(sourceId);
@@ -71,7 +74,7 @@ class SourceUploadServiceTest {
                 eq(sha256)
         )).thenReturn(pendingSource);
 
-        when(sourcePersistenceService.markStored(sourceId)).thenReturn(storedSource);
+        when(sourceProcessingService.process(sourceId)).thenReturn(readySource);
 
         var uploadedContent = new AtomicReference<byte[]>();
 
@@ -88,7 +91,7 @@ class SourceUploadServiceTest {
 
         var result = service.upload(collectionId, file);
 
-        assertThat(result).isSameAs(storedSource);
+        assertThat(result).isSameAs(readySource);
         assertThat(uploadedContent.get()).containsExactly(content);
 
         verify(objectStorage).store(
@@ -99,6 +102,7 @@ class SourceUploadServiceTest {
         );
 
         verify(sourcePersistenceService).markStored(sourceId);
+        verify(sourceProcessingService).process(sourceId);
         verify(sourcePersistenceService, never()).markFailed(any());
     }
 
@@ -184,6 +188,7 @@ class SourceUploadServiceTest {
 
         verify(sourcePersistenceService).markFailed(sourceId);
         verify(sourcePersistenceService, never()).markStored(any());
+        verifyNoInteractions(sourceProcessingService);
         verify(objectStorage, never()).delete(anyString());
     }
 
