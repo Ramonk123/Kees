@@ -16,7 +16,7 @@ public class ChunkPersistenceService {
 
 
     @Transactional
-    public List<Chunk> persistChunksToSource(Source source, List<ChunkDraft> drafts) {
+    public List<Chunk> replaceForSource(Source source, List<ChunkDraft> drafts) {
         repository.deleteAllBySource(source);
         repository.flush();
 

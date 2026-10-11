@@ -1,5 +1,6 @@
 package dev.ramon.kees.source;
 
+import dev.ramon.kees.shared.util.DecodeUtf8;
 import dev.ramon.kees.shared.util.HashContent;
 import dev.ramon.kees.storage.ObjectStorage;
 import dev.ramon.kees.storage.ObjectStorageException;
@@ -10,10 +11,6 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.nio.charset.CharacterCodingException;
-import java.nio.charset.CodingErrorAction;
-import java.nio.charset.StandardCharsets;
 import java.util.Locale;
 import java.util.UUID;
 
@@ -117,23 +114,8 @@ public class SourceUploadService {
         }
     }
 
-    private static String decodeUtf8(byte[] bytes) {
-        var decoder = StandardCharsets.UTF_8
-                .newDecoder()
-                .onMalformedInput(CodingErrorAction.REPORT)
-                .onUnmappableCharacter(CodingErrorAction.REPORT);
-
-        try {
-            return decoder
-                    .decode(ByteBuffer.wrap(bytes))
-                    .toString();
-        } catch (CharacterCodingException exception) {
-            throw new InvalidSourceFileException("File must contain valid UTF-8 text");
-        }
-    }
-
     private static void validateTextContent(byte[] bytes) {
-        var content = decodeUtf8(bytes);
+        var content = DecodeUtf8.decode(bytes);
         if (content.isBlank()) {
             throw new InvalidSourceFileException("File content cannot be empty");
         }

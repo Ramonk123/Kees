@@ -57,8 +57,24 @@ public class SourcePersistenceService {
         return source;
     }
 
+    @Transactional
+    public Source markProcessing(Source source) {
+        source.markProcessing();
+
+        return source;
+    }
+
+    @Transactional
+    public Source markReady(Source source) {
+        source.markReady();
+
+        return source;
+    }
+
     private Source getByPublicId(UUID publicId) {
         return sourceRepository.findByPublicId(publicId)
                 .orElseThrow(() -> new ResourceNotFoundException("source", publicId.toString()));
     }
+
+
 }

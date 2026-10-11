@@ -101,6 +101,16 @@ public class Source {
         status = SourceStatus.FAILED;
     }
 
+    public void markProcessing() {
+        requireStatus(SourceStatus.STORED);
+        status = SourceStatus.PROCESSING;
+    }
+
+    public void markReady() {
+        requireStatus(SourceStatus.PROCESSING);
+        status = SourceStatus.READY;
+    }
+
     private void requireStatus(SourceStatus expected) {
         if (status != expected) {
             throw new IllegalStateException(
