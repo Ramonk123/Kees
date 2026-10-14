@@ -1,11 +1,12 @@
 package dev.ramon.kees.source;
 
 import dev.ramon.kees.shared.util.DecodeUtf8;
-import dev.ramon.kees.shared.util.HashContent;
+import dev.ramon.kees.shared.util.ContentHasher;
 import dev.ramon.kees.storage.ObjectStorage;
 import dev.ramon.kees.storage.ObjectStorageException;
 import lombok.RequiredArgsConstructor;
 import org.jspecify.annotations.Nullable;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -21,6 +22,7 @@ public class SourceUploadService {
     private final SourceUploadProperties properties;
     private final SourcePersistenceService sourcePersistenceService;
     private final SourceProcessingService sourceProcessingService;
+    private final SourceRepository sourceRepository;
     private final ObjectStorage objectStorage;
 
     public Source upload(
@@ -46,20 +48,33 @@ public class SourceUploadService {
 
         validateTextContent(content);
 
-        var sha256 = HashContent.hash(content);
+        var sha256 = ContentHasher.hash(content);
+
+        if (sourceRepository.existsByCollection_PublicIdAndSha256AndStatusNot(
+                collectionId,
+                sha256,
+                SourceStatus.FAILED
+        )) {
+            throw new SourceAlreadyExistsException();
+        }
 
         var sourcePublicId = UUID.randomUUID();
 
         var key = generateStorageKey(collectionId, sourcePublicId);
 
-        var pendingSource = sourcePersistenceService.createPending(
-                sourcePublicId,
-                collectionId,
-                fileName,
-                key,
-                content.length,
-                sha256
-        );
+        Source pendingSource;
+        try {
+            pendingSource = sourcePersistenceService.createPending(
+                    sourcePublicId,
+                    collectionId,
+                    fileName,
+                    key,
+                    content.length,
+                    sha256
+            );
+        } catch (DataIntegrityViolationException exception) {
+            throw new SourceAlreadyExistsException();
+        }
 
         try {
             objectStorage.store(

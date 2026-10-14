@@ -1,6 +1,6 @@
 package dev.ramon.kees.chunk;
 
-import dev.ramon.kees.shared.util.HashContent;
+import dev.ramon.kees.shared.util.ContentHasher;
 import org.jspecify.annotations.Nullable;
 
 import java.util.ArrayList;
@@ -234,7 +234,7 @@ public final class MarkdownChunker {
                     sequenceNumber,
                     chunk.content(),
                     chunk.headingPath(),
-                    HashContent.hash(chunk.content())
+                    ContentHasher.hash(chunk.content())
             ));
         }
 

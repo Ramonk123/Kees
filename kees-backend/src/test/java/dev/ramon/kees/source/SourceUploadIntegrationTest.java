@@ -2,6 +2,7 @@ package dev.ramon.kees.source;
 
 import dev.ramon.kees.collection.api.CreateKnowledgeCollectionRequest;
 import dev.ramon.kees.collection.api.KnowledgeCollectionResponse;
+import dev.ramon.kees.shared.util.ContentHasher;
 import dev.ramon.kees.source.api.SourceResponse;
 import dev.ramon.kees.storage.ObjectStorage;
 import org.junit.jupiter.api.BeforeAll;
@@ -13,6 +14,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.http.MediaType;
+import org.springframework.http.ProblemDetail;
 import org.springframework.http.client.MultipartBodyBuilder;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
@@ -26,6 +28,7 @@ import org.testcontainers.utility.DockerImageName;
 import software.amazon.awssdk.services.s3.S3Client;
 
 import java.nio.charset.StandardCharsets;
+import java.util.UUID;
 
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 
@@ -101,6 +104,95 @@ public class SourceUploadIntegrationTest {
             assertThat(storedObject.contentType()).isEqualTo("text/markdown; charset=utf-8");
             assertThat(storedObject.contentLength()).isEqualTo(content.length);
         }
+    }
+
+    @Test
+    void rejectsDuplicateContentWithinTheSameCollection() {
+        var collection = createCollection();
+        var content = "Duplicate content".getBytes(StandardCharsets.UTF_8);
+
+        upload(collection, "original.md", content);
+
+        var problem = restTestClient
+                .post()
+                .uri("/api/collections/{collectionId}/sources", collection.publicId())
+                .contentType(MediaType.MULTIPART_FORM_DATA)
+                .body(multipart("copy.md", content).build())
+                .exchange()
+                .expectStatus()
+                .isEqualTo(409)
+                .expectBody(ProblemDetail.class)
+                .returnResult()
+                .getResponseBody();
+
+        assertThat(problem).isNotNull();
+        assertThat(problem.getDetail())
+                .isEqualTo("A source with identical content already exists in this collection");
+    }
+
+    @Test
+    void allowsIdenticalContentInDifferentCollections() {
+        var firstCollection = createCollection();
+        var secondCollection = createCollection();
+        var content = "Shared content".getBytes(StandardCharsets.UTF_8);
+
+        upload(firstCollection, "first.md", content);
+        var secondSource = upload(secondCollection, "second.md", content);
+
+        assertThat(secondSource.status()).isEqualTo(SourceStatus.READY);
+    }
+
+    @Test
+    void allowsRetryAfterPreviousSourceFailed() {
+        var collection = createCollection();
+        var content = "Retryable content".getBytes(StandardCharsets.UTF_8);
+        var failedSourceId = UUID.randomUUID();
+
+        sourcePersistenceService.createPending(
+                failedSourceId,
+                collection.publicId(),
+                "failed.md",
+                "test/failed/%s.md".formatted(failedSourceId),
+                content.length,
+                ContentHasher.hash(content)
+        );
+        sourcePersistenceService.markFailed(failedSourceId);
+
+        var retriedSource = upload(collection, "retry.md", content);
+
+        assertThat(retriedSource.status()).isEqualTo(SourceStatus.READY);
+    }
+
+    private SourceResponse upload(
+            KnowledgeCollectionResponse collection,
+            String filename,
+            byte[] content
+    ) {
+        return restTestClient
+                .post()
+                .uri("/api/collections/{collectionId}/sources", collection.publicId())
+                .contentType(MediaType.MULTIPART_FORM_DATA)
+                .body(multipart(filename, content).build())
+                .exchange()
+                .expectStatus()
+                .isCreated()
+                .expectBody(SourceResponse.class)
+                .returnResult()
+                .getResponseBody();
+    }
+
+    private MultipartBodyBuilder multipart(String filename, byte[] content) {
+        var multipart = new MultipartBodyBuilder();
+        multipart.part(
+                "file",
+                new ByteArrayResource(content) {
+                    @Override
+                    public String getFilename() {
+                        return filename;
+                    }
+                }
+        ).contentType(MediaType.TEXT_PLAIN);
+        return multipart;
     }
 
     private KnowledgeCollectionResponse createCollection() {

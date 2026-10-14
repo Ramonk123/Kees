@@ -11,6 +11,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.mock.web.MockMultipartFile;
 
 import java.io.ByteArrayInputStream;
@@ -38,6 +39,9 @@ class SourceUploadServiceTest {
 
     @Mock
     private SourceProcessingService sourceProcessingService;
+
+    @Mock
+    private SourceRepository sourceRepository;
 
     @Mock
     private ObjectStorage objectStorage;
@@ -236,6 +240,59 @@ class SourceUploadServiceTest {
                 .isInstanceOf(InvalidSourceFileException.class)
                 .hasMessage("File cannot be empty");
 
+    }
+
+    @Test
+    void rejectsDuplicateContentWithinTheSameCollection() {
+        var collectionId = UUID.randomUUID();
+        var content = "duplicate content".getBytes(StandardCharsets.UTF_8);
+        var sha256 = "b79f8c07798dcc75d6f288e6a620644a88a9c67e74019a57b88a5bfd918e4b0f";
+        var file = new MockMultipartFile(
+                "file",
+                "copy.md",
+                "text/markdown",
+                content
+        );
+
+        when(properties.maxFileSizeInBytes()).thenReturn(5L * 1024 * 1024);
+        when(sourceRepository.existsByCollection_PublicIdAndSha256AndStatusNot(
+                collectionId,
+                sha256,
+                SourceStatus.FAILED
+        )).thenReturn(true);
+
+        assertThatThrownBy(() -> service.upload(collectionId, file))
+                .isInstanceOf(SourceAlreadyExistsException.class)
+                .hasMessage("A source with identical content already exists in this collection");
+
+        verifyNoInteractions(sourcePersistenceService, sourceProcessingService, objectStorage);
+    }
+
+    @Test
+    void translatesConcurrentDuplicateInsertToDomainException() {
+        var collectionId = UUID.randomUUID();
+        var content = "concurrent content".getBytes(StandardCharsets.UTF_8);
+        var file = new MockMultipartFile(
+                "file",
+                "concurrent.md",
+                "text/markdown",
+                content
+        );
+
+        when(properties.maxFileSizeInBytes()).thenReturn(5L * 1024 * 1024);
+        when(sourcePersistenceService.createPending(
+                any(UUID.class),
+                eq(collectionId),
+                eq("concurrent.md"),
+                anyString(),
+                eq((long) content.length),
+                anyString()
+        )).thenThrow(new DataIntegrityViolationException("duplicate source"));
+
+        assertThatThrownBy(() -> service.upload(collectionId, file))
+                .isInstanceOf(SourceAlreadyExistsException.class);
+
+        verifyNoInteractions(sourceProcessingService, objectStorage);
     }
 
     private static Stream<Arguments> validFileNames() {
