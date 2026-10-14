@@ -9,7 +9,7 @@ import java.util.HexFormat;
 import java.util.Objects;
 
 @UtilityClass
-public final class HashContent {
+public final class ContentHasher {
 
     public static final String HASH_ALGORITHM = "SHA-256";
 
